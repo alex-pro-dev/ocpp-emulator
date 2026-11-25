@@ -10,15 +10,16 @@ import com.monta.ocpp.emulator.chargepoint.service.ChargePointService
 import com.monta.ocpp.emulator.chargepointconnector.entity.ChargePointConnectorTable
 import com.monta.ocpp.emulator.chargepointtransaction.entity.ChargePointTransaction
 import com.monta.ocpp.emulator.common.util.MontaSerialization
+import com.monta.ocpp.emulator.database.DatabaseInitiator
 import com.monta.ocpp.emulator.v16.data.entity.TxDefault
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
@@ -42,10 +43,23 @@ class ConnectionLifecycleTest {
     @TempDir
     lateinit var directory: Path
 
+    private lateinit var database: DatabaseInitiator
+
+    @BeforeEach
+    fun openDatabase() {
+        database = DatabaseInitiator("connections.db", directory.toFile())
+        transaction(database.database) {
+            SchemaUtils.create(ChargePointTable, ChargePointConnectorTable, ChargePointTransaction, TxDefault)
+        }
+    }
+
+    @AfterEach
+    fun closeDatabase() {
+        database.close()
+    }
+
     @Test
     fun `failed handshake is stopped before edited settings connect and successful session stays single`() = runBlocking {
-        val database = Database.connect("jdbc:sqlite:${directory.resolve("connections.db")}", driver = "org.sqlite.JDBC")
-        transaction(database) { SchemaUtils.create(ChargePointTable, ChargePointConnectorTable, ChargePointTransaction, TxDefault) }
         val koin = startKoin { modules(CommonKoinModule().module, MontaKoinModule().module, MainModule.module) }.koin
         val service = koin.get<ChargePointService>()
         val manager = koin.get<ConnectionManager>()
@@ -96,15 +110,12 @@ class ConnectionLifecycleTest {
             } finally {
                 manager.disconnectAll()
                 stopKoin()
-                TransactionManager.closeAndUnregister(database)
             }
         }
     }
 
     @Test
     fun silentPeerDisconnectIsBoundedAndReleasesSocketAndProtocolSession() = runBlocking {
-        val database = Database.connect("jdbc:sqlite:${directory.resolve("silent.db")}", driver = "org.sqlite.JDBC")
-        transaction(database) { SchemaUtils.create(ChargePointTable, ChargePointConnectorTable, ChargePointTransaction, TxDefault) }
         val koin = startKoin { modules(CommonKoinModule().module, MontaKoinModule().module, MainModule.module) }.koin
         val service = koin.get<ChargePointService>()
         val manager = koin.get<ConnectionManager>()
@@ -131,15 +142,12 @@ class ConnectionLifecycleTest {
             } finally {
                 manager.disconnectAll()
                 stopKoin()
-                TransactionManager.closeAndUnregister(database)
             }
         }
     }
 
     @Test
     fun `stations connect concurrently with separate connector counts`() = runBlocking {
-        val database = Database.connect("jdbc:sqlite:${directory.resolve("stations.db")}", driver = "org.sqlite.JDBC")
-        transaction(database) { SchemaUtils.create(ChargePointTable, ChargePointConnectorTable, ChargePointTransaction, TxDefault) }
         val koin = startKoin { modules(CommonKoinModule().module, MontaKoinModule().module, MainModule.module) }.koin
         val service = koin.get<ChargePointService>()
         val manager = koin.get<ConnectionManager>()
@@ -177,7 +185,6 @@ class ConnectionLifecycleTest {
                 } finally {
                     manager.disconnectAll()
                     stopKoin()
-                    TransactionManager.closeAndUnregister(database)
                 }
             }
         }

@@ -5,20 +5,18 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.transactions.TransactionManager
 import java.io.File
-import javax.sql.DataSource
 
 class DatabaseInitiator(
-    private val databaseName: String,
-) {
+    databaseName: String,
+    directory: File = appRoot,
+) : AutoCloseable {
 
     private val logger = KotlinLogging.logger {}
 
-    private val databasePath by lazy {
-        "${appRoot.absolutePath}${File.separator}$databaseName"
-    }
-
-    private val dataSource: DataSource
+    private val databasePath = File(directory, databaseName).absolutePath
+    private val dataSource: HikariDataSource
     val database: Database
 
     init {
@@ -38,6 +36,14 @@ class DatabaseInitiator(
         } catch (exception: Exception) {
             logger.error("database error", exception)
             throw exception
+        }
+    }
+
+    override fun close() {
+        try {
+            TransactionManager.closeAndUnregister(database)
+        } finally {
+            dataSource.close()
         }
     }
 }
