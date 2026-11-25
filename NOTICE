@@ -1,0 +1,9 @@
+EVCharge OCPP Emulator
+
+This project contains software developed by Monta for the OCPP Emulator
+(https://github.com/monta-app/ocpp-emulator), distributed under the Apache
+License, Version 2.0. This distribution includes modifications by EVCharge
+(https://evcharge.mobi).
+
+EVCharge names and logos identify the project and its publisher. The Apache
+License does not grant rights to use trademarks (see section 6).

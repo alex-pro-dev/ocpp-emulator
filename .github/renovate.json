@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    ":semanticCommitTypeAll(chore)"
+  ],
+  "packageRules": [
+    {
+      "groupName": "upgrade all non-major dependencies (Gradle)",
+      "matchManagers": [
+        "gradle"
+      ],
+      "matchPackagePatterns": [
+        "*"
+      ],
+      "groupSlug": "gradle",
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ]
+    }
+  ]
+}
